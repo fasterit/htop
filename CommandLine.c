@@ -425,6 +425,20 @@ int CommandLine_run(int argc, char** argv) {
    if (flags.commFilter)
       setCommFilter(&state, &(flags.commFilter));
 
+   /* Set up shared search/filter history, stored next to the config file */
+   {
+      const char* rcPath = settings->filename;
+      const char* lastSlash = strrchr(rcPath, '/');
+      char historyPath[PATH_MAX];
+      if (lastSlash) {
+         int dirLen = (int)(lastSlash - rcPath + 1);
+         snprintf(historyPath, sizeof(historyPath), "%.*s%s", dirLen, rcPath, "htop_history");
+      } else {
+         snprintf(historyPath, sizeof(historyPath), "htop_history");
+      }
+      IncSet_setHistoryFile(panel->inc, historyPath);
+   }
+
    ScreenManager* scr = ScreenManager_new(header, host, &state, true);
    ScreenManager_add(scr, (Panel*) panel, -1);
 

@@ -11,11 +11,10 @@ in the source distribution for its full text.
 #include <stddef.h>
 
 #include "FunctionBar.h"
+#include "History.h"
+#include "LineEditor.h"
 #include "Panel.h"
 #include "Vector.h"
-
-
-#define INCMODE_MAX 128
 
 typedef enum {
    INC_SEARCH = 0,
@@ -23,9 +22,8 @@ typedef enum {
 } IncType;
 
 typedef struct IncMode_ {
-   char buffer[INCMODE_MAX + 1];
+   LineEditor editor;
    FunctionBar* bar;
-   size_t index;
    bool isFilter;
 } IncMode;
 
@@ -36,10 +34,12 @@ typedef struct IncSet_ {
    FunctionBar* defaultBar;
    bool filtering;
    bool found;
+   History* history;  /* shared history for search and filter; may be NULL */
+   int fieldStartX;   /* screen X where the input field begins (set on draw) */
 } IncSet;
 
-static inline const char* IncSet_filter(const IncSet* this) {
-   return this->filtering ? this->modes[INC_FILTER].buffer : NULL;
+static inline const char* IncSet_filter(IncSet* this) {
+   return this->filtering ? LineEditor_getText(&this->modes[INC_FILTER].editor) : NULL;
 }
 
 void IncSet_setFilter(IncSet* this, const char* filter);
@@ -52,13 +52,20 @@ IncSet* IncSet_new(FunctionBar* bar);
 
 void IncSet_delete(IncSet* this);
 
+/* Set the history file path (creates/loads history from the given file).
+   Call this after IncSet_new when the settings path is available. */
+void IncSet_setHistoryFile(IncSet* this, const char* filename);
+
+/* Save the history to disk (noop if no history file was set) */
+void IncSet_saveHistory(const IncSet* this);
+
 bool IncSet_handleKey(IncSet* this, int ch, Panel* panel, IncMode_GetPanelValue getPanelValue, Vector* lines);
 
 const char* IncSet_getListItemValue(Panel* panel, int i);
 
 void IncSet_activate(IncSet* this, IncType type, Panel* panel);
 
-void IncSet_drawBar(const IncSet* this, int attr);
+void IncSet_drawBar(IncSet* this, int attr);
 
 int IncSet_synthesizeEvent(IncSet* this, int x);
 
