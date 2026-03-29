@@ -70,7 +70,6 @@ IncSet* IncSet_new(FunctionBar* bar) {
    this->filtering = false;
    this->found = false;
    this->history = NULL;
-   this->fieldStartX = 0;
    return this;
 }
 
@@ -185,7 +184,8 @@ bool IncSet_handleKey(IncSet* this, int ch, Panel* panel, IncMode_GetPanelValue 
 
    /* Mouse click in the function bar input field: place cursor */
    if (ch == KEY_MOUSE_BAR_CLICK) {
-      LineEditor_click(&mode->editor, panel->lastMouseBarClickX, this->fieldStartX);
+      int fieldStartX = FunctionBar_getWidth(mode->bar);
+      LineEditor_click(&mode->editor, panel->lastMouseBarClickX, fieldStartX);
       IncSet_drawBar(this, CRT_colors[FUNCTION_BAR]);
       return false;
    }
@@ -293,14 +293,13 @@ const char* IncSet_getListItemValue(Panel* panel, int i) {
    return l ? l->value : "";
 }
 
-void IncSet_drawBar(IncSet* this, int attr) {
+void IncSet_drawBar(const IncSet* this, int attr) {
    if (this->active) {
       if (!this->active->isFilter && !this->found)
          attr = CRT_colors[FAILED_SEARCH];
 
       /* Draw the function keys and get the start of the input field */
       int fieldStartX = FunctionBar_drawExtra(this->active->bar, NULL, -1, false);
-      this->fieldStartX = fieldStartX;
 
       /* Update scroll so the cursor remains visible */
       int fieldWidth = COLS - fieldStartX;
@@ -323,7 +322,7 @@ int IncSet_synthesizeEvent(IncSet* this, int x) {
    if (this->active) {
       int ev = FunctionBar_synthesizeEvent(this->active->bar, x);
       /* Click in the input area: synthesize a bar-click event */
-      if (ev == ERR && x >= this->fieldStartX) {
+      if (ev == ERR && x >= FunctionBar_getWidth(this->active->bar)) {
          this->panel->lastMouseBarClickX = x;
          return KEY_MOUSE_BAR_CLICK;
       }

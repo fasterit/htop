@@ -19,12 +19,12 @@ typedef struct History_ {
    char** entries;    /* array of history strings, oldest first */
    size_t count;      /* current number of entries */
    size_t capacity;   /* allocated capacity */
-   int position;      /* current browse position: count = "at new input" */
+   size_t position;      /* current browse position: count = "at new input" */
    char saved[LINEEDITOR_MAX + 1]; /* saved current input while browsing */
-   char* filename;    /* path to history file (may be NULL) */
+   char* filename;    /* path to history file (may be NULL = no read / write) */
 } History;
 
-/* Create a new History, loading from the given file (may be NULL) */
+/* Create a new History, loading from the given file (may be NULL = init new history) */
 History* History_new(const char* filename);
 
 /* Free all resources */

@@ -148,6 +148,16 @@ void FunctionBar_append(const char* buffer, int attr) {
    currentLen += strlen(buffer) + 1;
 }
 
+int FunctionBar_getWidth(const FunctionBar* this) {
+   int x = 0;
+   for (size_t i = 0; this->functions[i]; i++) {
+      assert(i < FUNCTIONBAR_MAXEVENTS);
+      x += strlen(this->keys.constKeys[i]);
+      x += strlen(this->functions[i]);
+   }
+   return x;
+}
+
 int FunctionBar_synthesizeEvent(const FunctionBar* this, int pos) {
    int x = 0;
    for (size_t i = 0; this->functions[i]; i++) {

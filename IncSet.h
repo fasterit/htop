@@ -35,7 +35,6 @@ typedef struct IncSet_ {
    bool filtering;
    bool found;
    History* history;  /* shared history for search and filter; may be NULL */
-   int fieldStartX;   /* screen X where the input field begins (set on draw) */
 } IncSet;
 
 static inline const char* IncSet_filter(IncSet* this) {
@@ -65,7 +64,7 @@ const char* IncSet_getListItemValue(Panel* panel, int i);
 
 void IncSet_activate(IncSet* this, IncType type, Panel* panel);
 
-void IncSet_drawBar(IncSet* this, int attr);
+void IncSet_drawBar(const IncSet* this, int attr);
 
 int IncSet_synthesizeEvent(IncSet* this, int x);
 

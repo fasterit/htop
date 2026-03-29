@@ -12,9 +12,9 @@ in the source distribution for its full text.
 #include <ctype.h>
 #include <string.h>
 
-#include "ProvideCurses.h"
 #include "CRT.h"
 #include "Panel.h"
+#include "ProvideCurses.h"
 
 
 void LineEditor_init(LineEditor* this) {
@@ -42,7 +42,7 @@ void LineEditor_setText(LineEditor* this, const char* text) {
    size_t copyLen = this->maxLen;
    strncpy(this->buffer, text, copyLen);
    this->buffer[copyLen] = '\0';
-   this->len = strlen(this->buffer);
+   this->len = strnlen(this->buffer, this->maxLen);
    this->cursor = this->len;
    this->scroll = 0;
 }

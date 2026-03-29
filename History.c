@@ -9,9 +9,11 @@ in the source distribution for its full text.
 
 #include "History.h"
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "Macros.h"
 #include "XUtils.h"
@@ -33,27 +35,9 @@ static void History_load(History* this) {
       if (len == 0)
          continue;
 
-      /* Grow array if needed */
-      if (this->count >= this->capacity) {
-         if (this->capacity >= HISTORY_MAX_ENTRIES)
-            break;
-         this->capacity = MINIMUM(this->capacity * 2, (size_t)HISTORY_MAX_ENTRIES);
-         this->entries = xReallocArray(this->entries, this->capacity, sizeof(char*));
-      }
-      this->entries[this->count++] = xStrdup(line);
+      History_add(this, line);
    }
    fclose(fp);
-
-   /* Trim to max entries (keep newest) */
-   if (this->count > HISTORY_MAX_ENTRIES) {
-      size_t excess = this->count - HISTORY_MAX_ENTRIES;
-      for (size_t i = 0; i < excess; i++)
-         free(this->entries[i]);
-      memmove(this->entries, this->entries + excess, HISTORY_MAX_ENTRIES * sizeof(char*));
-      this->count = HISTORY_MAX_ENTRIES;
-   }
-
-   this->position = (int)this->count;
 }
 
 History* History_new(const char* filename) {
@@ -68,7 +52,7 @@ History* History_new(const char* filename) {
    if (this->filename)
       History_load(this);
 
-   this->position = (int)this->count;
+   this->position = this->count;
 
    return this;
 }
@@ -84,9 +68,15 @@ void History_delete(History* this) {
 void History_save(const History* this) {
    if (!this->filename)
       return;
-   FILE* fp = fopen(this->filename, "w");
-   if (!fp)
+   /* Settings_write writes things via a temp file & rename, we do it less robust but faster here: */
+   int fd = open(this->filename, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+   if (fd == -1)
       return;
+   FILE* fp = fdopen(fd, "w");
+   if (!fp) {
+      close(fd); // fd not consumed on failure, so close it
+      return;
+   }
    size_t start = (this->count > HISTORY_MAX_ENTRIES) ? this->count - HISTORY_MAX_ENTRIES : 0;
    for (size_t i = start; i < this->count; i++)
       fprintf(fp, "%s\n", this->entries[i]);
@@ -99,7 +89,7 @@ void History_add(History* this, const char* entry) {
 
    /* Deduplicate: remove previous identical entry if present */
    for (size_t i = 0; i < this->count; i++) {
-      if (strcmp(this->entries[i], entry) == 0) {
+      if (String_eq(this->entries[i], entry)) {
          free(this->entries[i]);
          memmove(this->entries + i, this->entries + i + 1, (this->count - i - 1) * sizeof(char*));
          this->count--;
@@ -123,18 +113,17 @@ void History_add(History* this, const char* entry) {
    this->entries[this->count++] = xStrdup(entry);
 
    /* Reset position to "at new input" */
-   this->position = (int)this->count;
+   this->position = this->count;
    this->saved[0] = '\0';
 }
 
 const char* History_navigate(History* this, LineEditor* editor, bool back) {
-   int count = (int)this->count;
-   if (count == 0)
+   if (this->count == 0)
       return NULL;
 
    if (back) {
       /* Going back (up arrow) */
-      if (this->position == count) {
+      if (this->position == this->count) {
          /* Save current editor content before entering history */
          strncpy(this->saved, LineEditor_getText(editor), LINEEDITOR_MAX);
          this->saved[LINEEDITOR_MAX] = '\0';
@@ -146,10 +135,10 @@ const char* History_navigate(History* this, LineEditor* editor, bool back) {
       return NULL; /* Already at oldest entry */
    } else {
       /* Going forward (down arrow) */
-      if (this->position >= count)
+      if (this->position >= this->count)
          return NULL; /* Already at newest */
       this->position++;
-      if (this->position == count) {
+      if (this->position == this->count) {
          /* Restore saved input */
          return this->saved;
       }
@@ -158,6 +147,6 @@ const char* History_navigate(History* this, LineEditor* editor, bool back) {
 }
 
 void History_resetPosition(History* this) {
-   this->position = (int)this->count;
+   this->position = this->count;
    this->saved[0] = '\0';
 }
