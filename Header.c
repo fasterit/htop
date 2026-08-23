@@ -208,10 +208,8 @@ void Header_draw(const Header* this) {
       float colWidth = (float)width * HeaderLayout_layouts[this->headerLayout].widths[col] / 100.0F;
 
       roundingLoss += colWidth - floorf(colWidth);
-      if (roundingLoss >= 1.0F) {
+      if (roundingLoss >= 1.0F)
          colWidth += 1.0F;
-         roundingLoss -= 1.0F;
-      }
 
       for (int y = (pad / 2), i = 0; i < Vector_size(meters); i++) {
          Meter* meter = (Meter*) Vector_get(meters, i);
@@ -306,4 +304,47 @@ int Header_calculateHeight(Header* this) {
    this->height = maxHeight;
 
    return maxHeight;
+}
+
+int Header_click(const Header* this, int x, int y) {
+   const size_t numCols = HeaderLayout_getColumns(this->headerLayout);
+   const int width = COLS - 2 * this->pad - ((int)numCols - 1);
+   int colX = this->pad;
+   float roundingLoss = 0.0F;
+
+   Header_forEachColumn(this, col) {
+      float colWidth = (float)width * HeaderLayout_layouts[this->headerLayout].widths[col] / 100.0F;
+
+      roundingLoss += colWidth - floorf(colWidth);
+      if (roundingLoss >= 1.0F)
+         colWidth += 1.0F;
+
+      int colEnd = colX + (int)floorf(colWidth);
+
+      if (x < colX || x >= colEnd) {
+         colX = colEnd + 1; // separator column
+         continue;
+      }
+
+      Vector* meters = this->columns[col];
+      for (int meterY = (this->pad / 2), i = 0; i < Vector_size(meters); i++) {
+         Meter* meter = (Meter*) Vector_get(meters, i);
+
+         if (y < meterY || y >= meterY + meter->h) {
+            meterY += meter->h;
+            continue;
+         }
+
+         Meter_Click clickFn = Meter_clickFn(meter);
+         if (clickFn) {
+            return clickFn(meter, x - colX, y - meterY);
+         }
+
+         break;
+      }
+
+      break;
+   }
+
+   return HTOP_OK;
 }
