@@ -222,7 +222,7 @@ void Header_draw(const Header* this) {
             except for multi column meters. */
          if (meter->mode == TEXT_METERMODE && !Meter_isMultiColumn(meter)) {
             for (int j = 1; j < meter->columnWidthCount; j++) {
-               actualWidth++; /* separator column */
+               actualWidth++; // separator column
                actualWidth += (float)width * HeaderLayout_layouts[this->headerLayout].widths[col + j] / 100.0F;
             }
          }
@@ -233,7 +233,7 @@ void Header_draw(const Header* this) {
       }
 
       x += floorf(colWidth);
-      x++; /* separator column */
+      x++; // separator column
    }
 }
 
