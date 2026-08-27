@@ -90,12 +90,18 @@ static int TasksMeter_click(Meter* this, int relX, int relY ATTR_UNUSED) {
    if (relX >= thrStart && relX < thrEnd) {
       settings->hideUserlandThreads = !settings->hideUserlandThreads;
       settings->lastUpdate++;
+
+      Table_preserveSelection(this->host->activeTable);
+
       return HTOP_RECALCULATE | HTOP_SAVE_SETTINGS | HTOP_KEEP_FOLLOWING;
    }
 
    if (relX >= kthrStart && relX < kthrEnd) {
       settings->hideKernelThreads = !settings->hideKernelThreads;
       settings->lastUpdate++;
+
+      Table_preserveSelection(this->host->activeTable);
+
       return HTOP_RECALCULATE | HTOP_SAVE_SETTINGS | HTOP_KEEP_FOLLOWING;
    }
 
