@@ -295,6 +295,7 @@ void ScreenManager_run(ScreenManager* this, Panel** lastFocus, int* lastKey, con
                      ch = KEY_MOUSE_BAR_CLICK;
                   }
                } else if (!this->state->hideMeters && this->header &&
+                          mevent.x >= this->x1 && mevent.x < COLS + this->x2 &&
                           mevent.y >= this->y1 && mevent.y < this->y1 + header_height(this)) {
                   /* Click in the meters/header area */
                   int meterReaction = Header_click(this->header, mevent.x - this->x1, mevent.y - this->y1);
