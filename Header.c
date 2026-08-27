@@ -1,6 +1,7 @@
 /*
 htop - Header.c
 (C) 2004-2011 Hisham H. Muhammad
+(C) 2020-2026 htop dev team
 Released under the GNU GPLv2+, see the COPYING file
 in the source distribution for its full text.
 */
@@ -10,7 +11,6 @@ in the source distribution for its full text.
 #include "Header.h"
 
 #include <assert.h>
-#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -200,38 +200,27 @@ void Header_draw(const Header* this) {
    }
    const size_t numCols = HeaderLayout_getColumns(this->headerLayout);
    const int width = COLS - 2 * pad - ((int)numCols - 1);
-   int x = pad;
-   float roundingLoss = 0.0F;
 
    Header_forEachColumn(this, col) {
       Vector* meters = this->columns[col];
-      float colWidth = (float)width * HeaderLayout_layouts[this->headerLayout].widths[col] / 100.0F;
-
-      roundingLoss += colWidth - floorf(colWidth);
-      if (roundingLoss >= 1.0F)
-         colWidth += 1.0F;
+      HeaderLayoutDimensions colDims = HeaderLayout_getColumnDimensions(this->headerLayout, pad, width, col);
 
       for (int y = (pad / 2), i = 0; i < Vector_size(meters); i++) {
          Meter* meter = (Meter*) Vector_get(meters, i);
 
-         float actualWidth = colWidth;
+         int drawWidth = colDims.x2 - colDims.x1;
 
          /* Let meters in text mode expand to the right on empty neighbors;
             except for multi column meters. */
-         if (meter->mode == TEXT_METERMODE && !Meter_isMultiColumn(meter)) {
-            for (int j = 1; j < meter->columnWidthCount; j++) {
-               actualWidth++; // separator column
-               actualWidth += (float)width * HeaderLayout_layouts[this->headerLayout].widths[col + j] / 100.0F;
-            }
+         if (meter->mode == TEXT_METERMODE && !Meter_isMultiColumn(meter) && meter->columnWidthCount > 1) {
+            size_t spanCol = col + meter->columnWidthCount - 1;
+            drawWidth = HeaderLayout_getColumnDimensions(this->headerLayout, pad, width, spanCol).x2 - colDims.x1;
          }
 
          assert(meter->draw);
-         meter->draw(meter, x, y, floorf(actualWidth));
+         meter->draw(meter, colDims.x1, y, drawWidth);
          y += meter->h;
       }
-
-      x += floorf(colWidth);
-      x++; // separator column
    }
 }
 
@@ -309,20 +298,11 @@ int Header_calculateHeight(Header* this) {
 int Header_click(const Header* this, int x, int y) {
    const size_t numCols = HeaderLayout_getColumns(this->headerLayout);
    const int width = COLS - 2 * this->pad - ((int)numCols - 1);
-   int colX = this->pad;
-   float roundingLoss = 0.0F;
 
    Header_forEachColumn(this, col) {
-      float colWidth = (float)width * HeaderLayout_layouts[this->headerLayout].widths[col] / 100.0F;
+      HeaderLayoutDimensions colDims = HeaderLayout_getColumnDimensions(this->headerLayout, this->pad, width, col);
 
-      roundingLoss += colWidth - floorf(colWidth);
-      if (roundingLoss >= 1.0F)
-         colWidth += 1.0F;
-
-      int colEnd = colX + (int)floorf(colWidth);
-
-      if (x < colX || x >= colEnd) {
-         colX = colEnd + 1; // separator column
+      if (x < colDims.x1 || x >= colDims.x2) {
          continue;
       }
 
@@ -337,7 +317,7 @@ int Header_click(const Header* this, int x, int y) {
 
          Meter_Click clickFn = Meter_clickFn(meter);
          if (clickFn) {
-            return clickFn(meter, x - colX, y - meterY);
+            return clickFn(meter, x - colDims.x1, y - meterY);
          }
 
          break;
