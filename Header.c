@@ -180,6 +180,17 @@ Meter* Header_addMeterByClass(Header* this, const MeterClass* type, unsigned int
    return meter;
 }
 
+/* Meters in text mode may span into empty neighboring columns; keep the
+ * drawn and clickable widths consistent. */
+static int Header_meterWidth(const Header* this, const HeaderLayoutDimensions* colDims, const Meter* meter, size_t col, const int width) {
+   if (meter->mode == TEXT_METERMODE && !Meter_isMultiColumn(meter) && meter->columnWidthCount > 1) {
+      size_t spanCol = col + meter->columnWidthCount - 1;
+      return HeaderLayout_getColumnDimensions(this->headerLayout, this->pad, width, spanCol).x2 - colDims->x1;
+   }
+
+   return colDims->x2 - colDims->x1;
+}
+
 void Header_reinit(Header* this) {
    Header_forEachColumn(this, col) {
       for (int i = 0; i < Vector_size(this->columns[col]); i++) {
@@ -207,15 +218,7 @@ void Header_draw(const Header* this) {
 
       for (int y = (pad / 2), i = 0; i < Vector_size(meters); i++) {
          Meter* meter = (Meter*) Vector_get(meters, i);
-
-         int drawWidth = colDims.x2 - colDims.x1;
-
-         /* Let meters in text mode expand to the right on empty neighbors;
-            except for multi column meters. */
-         if (meter->mode == TEXT_METERMODE && !Meter_isMultiColumn(meter) && meter->columnWidthCount > 1) {
-            size_t spanCol = col + meter->columnWidthCount - 1;
-            drawWidth = HeaderLayout_getColumnDimensions(this->headerLayout, pad, width, spanCol).x2 - colDims.x1;
-         }
+         int drawWidth = Header_meterWidth(this, &colDims, meter, col, width);
 
          assert(meter->draw);
          meter->draw(meter, colDims.x1, y, drawWidth);
@@ -302,9 +305,12 @@ int Header_click(const Header* this, int x, int y) {
    Header_forEachColumn(this, col) {
       HeaderLayoutDimensions colDims = HeaderLayout_getColumnDimensions(this->headerLayout, this->pad, width, col);
 
-      if (x < colDims.x1 || x >= colDims.x2) {
+      if (x < colDims.x1) {
          continue;
       }
+
+      const bool columnOwnsX = (x < colDims.x2);
+      bool hit = false;
 
       Vector* meters = this->columns[col];
       for (int meterY = (this->pad / 2), i = 0; i < Vector_size(meters); i++) {
@@ -315,15 +321,24 @@ int Header_click(const Header* this, int x, int y) {
             continue;
          }
 
+         const int meterHitWidth = Header_meterWidth(this, &colDims, meter, col, width);
+         if (x >= colDims.x1 + meterHitWidth) {
+            /* beyond this meter's drawn extent -> try the next column */
+            break;
+         }
+
          Meter_Click clickFn = Meter_clickFn(meter);
          if (clickFn) {
             return clickFn(meter, x - colDims.x1, y - meterY);
          }
 
+         /* meter at this position has no click handler: stop the search */
+         hit = true;
          break;
       }
 
-      break;
+      if (hit || columnOwnsX)
+         break;
    }
 
    return HTOP_OK;
