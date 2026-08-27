@@ -294,10 +294,10 @@ void ScreenManager_run(ScreenManager* this, Panel** lastFocus, int* lastKey, con
                      panelFocus->lastMouseBarClickX = mevent.x;
                      ch = KEY_MOUSE_BAR_CLICK;
                   }
-               } else if (!this->state->hideMeters && this->header &&
-                          mevent.x >= this->x1 && mevent.x < COLS + this->x2 &&
-                          mevent.y >= this->y1 && mevent.y < this->y1 + header_height(this)) {
-                  /* Click in the meters/header area */
+} else if (!this->state->hideMeters && this->header &&
+                      mevent.x >= this->x1 && mevent.x < COLS + this->x2 &&
+                      mevent.y >= this->y1 && mevent.y < this->y1 + header_height(this) - (settings->screenTabs ? 1 : 0)) {
+                   /* Click in the meters/header area (excluding the screen-tab row) */
                   int meterReaction = Header_click(this->header, mevent.x - this->x1, mevent.y - this->y1);
                   if (meterReaction & HTOP_RECALCULATE) {
                      rescan = true;
