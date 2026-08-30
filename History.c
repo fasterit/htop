@@ -24,14 +24,15 @@ in the source distribution for its full text.
 /* Determine whether the history file is safe to (over)write, mirroring the
    checks Settings_read() applies to htoprc: the file must be a regular file
    owned by the effective user with owner-write permission. The O_NOFOLLOW
-   flag guards the final path component against symlink attacks. */
+   flag guards the final path component against symlink attacks, while
+   O_NONBLOCK keeps an owned FIFO from blocking the read-only fallback. */
 static void History_load(History* this) {
    if (!this->filename)
       return;
 
    int fd = -1;
    do {
-      fd = open(this->filename, O_RDWR | O_NOCTTY | O_NOFOLLOW);
+      fd = open(this->filename, O_RDWR | O_NOCTTY | O_NOFOLLOW | O_NONBLOCK);
    } while (fd < 0 && errno == EINTR);
 
    if (fd < 0) {
@@ -45,15 +46,23 @@ static void History_load(History* this) {
    }
 
    /* If opening read & write is not possible, open read only.
-      There is no risk of following a symlink in this case. */
+      O_NOFOLLOW rejects a planted symlink, O_NONBLOCK avoids blocking on
+      non-regular files such as FIFOs when no writer is present. */
    if (fd < 0) {
       do {
-         fd = open(this->filename, O_RDONLY | O_NOCTTY);
+         fd = open(this->filename, O_RDONLY | O_NOCTTY | O_NOFOLLOW | O_NONBLOCK);
       } while (fd < 0 && errno == EINTR);
    }
 
    if (fd < 0)
       return;
+
+   /* Only read regular files; reading a FIFO would block. */
+   struct stat sb;
+   if (fstat(fd, &sb) != 0 || !S_ISREG(sb.st_mode)) {
+      close(fd);
+      return;
+   }
 
    FILE* fp = fdopen(fd, "r");
    if (!fp) {
@@ -106,8 +115,9 @@ void History_save(const History* this) {
       return;
    /* Settings_write writes things via a temp file & rename, we do it less robust but faster here.
       O_NOFOLLOW guards against a symlink planted at the final path component,
-      and the fstat() re-check closes a race between open and the owner verification. */
-   int fd = open(this->filename, O_WRONLY | O_NOCTTY | O_CREAT | O_NOFOLLOW, 0600);
+      O_NONBLOCK avoids hanging on an existing FIFO, and the fstat() re-check
+      closes a race between open and the owner verification. */
+   int fd = open(this->filename, O_WRONLY | O_NOCTTY | O_CREAT | O_NOFOLLOW | O_NONBLOCK, 0600);
    if (fd == -1)
       return;
 

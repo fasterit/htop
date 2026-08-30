@@ -937,17 +937,24 @@ static bool Settings_mkdirp(const char* path, mode_t mode) {
 }
 
 static void Settings_migrateHistory(const char* fromPath, const char* toPath) {
-   if (access(toPath, F_OK) == 0)
-      return;
-
-   struct stat sb;
-   if (lstat(fromPath, &sb) != 0 || !S_ISREG(sb.st_mode) || sb.st_uid != geteuid())
-      return;
-
-   int fromFd = open(fromPath, O_RDONLY | O_NOFOLLOW);
+   /* O_NOFOLLOW and O_NONBLOCK ensure a symlink or FIFO planted at the path
+      cannot redirect the copy or block it. */
+   int fromFd = open(fromPath, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
    if (fromFd < 0)
       return;
-   int toFd = open(toPath, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
+
+   /* Validate the descriptor we actually opened: regular file owned by the
+      effective user. O_NOFOLLOW rejects a symlink at the final path component,
+      and fstat() rules out a swap between open() and here. */
+   struct stat sb;
+   if (fstat(fromFd, &sb) != 0 || !S_ISREG(sb.st_mode) || sb.st_uid != geteuid()) {
+      close(fromFd);
+      return;
+   }
+
+   /* O_EXCL guarantees the destination is never overwritten; once the state
+      file exists it takes precedence over the legacy copy. */
+   int toFd = open(toPath, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_NONBLOCK, 0600);
    if (toFd < 0) {
       close(fromFd);
       return;
@@ -974,14 +981,29 @@ static void Settings_migrateHistory(const char* fromPath, const char* toPath) {
       ok = false;
    if (close(toFd) != 0 || !ok) {
       unlink(toPath);
-   } else {
-      (void) unlink(fromPath);
+      return;
    }
+
+   /* Remove the legacy file only if it still refers to the entry we copied. */
+   struct stat sbPath;
+   if (lstat(fromPath, &sbPath) == 0 && sbPath.st_dev == sb.st_dev && sbPath.st_ino == sb.st_ino)
+      (void) unlink(fromPath);
 }
 
-char* Settings_getHistoryFile(void) {
+/* Return the legacy history path as stored beside a configuration file
+   (the old history location), or NULL when the file has no directory part. */
+static char* Settings_legacyHistoryFile(const char* configFile) {
+   const char* lastSlash = strrchr(configFile, '/');
+   if (!lastSlash)
+      return NULL;
+   char* dir = xStrndup(configFile, (size_t)(lastSlash - configFile + 1));
+   char* file = String_cat(dir, "htop_history");
+   free(dir);
+   return file;
+}
+
+char* Settings_getHistoryFile(const char* configFile) {
    const char* xdgStateHome = getenv("XDG_STATE_HOME");
-   const char* xdgConfigHome = getenv("XDG_CONFIG_HOME");
    const char* home = Settings_getHome();
 
    if ((!xdgStateHome || xdgStateHome[0] != '/') && !home[0])
@@ -1001,15 +1023,13 @@ char* Settings_getHistoryFile(void) {
    }
    free(stateHtopDir);
 
-   char* legacyDir;
-   if (xdgConfigHome && xdgConfigHome[0] == '/')
-      legacyDir = String_cat(xdgConfigHome, "/htop");
-   else
-      legacyDir = String_cat(home, CONFIGDIR "/htop");
-   char* legacyFile = String_cat(legacyDir, "/htop_history");
-   free(legacyDir);
-   Settings_migrateHistory(legacyFile, historyFile);
-   free(legacyFile);
+   /* The search/filter history used to be stored next to the
+      htoprc file; migrate it if present. */
+   char* legacyFile = Settings_legacyHistoryFile(configFile);
+   if (legacyFile) {
+      Settings_migrateHistory(legacyFile, historyFile);
+      free(legacyFile);
+   }
 
    return historyFile;
 }

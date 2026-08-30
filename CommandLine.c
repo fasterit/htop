@@ -473,7 +473,7 @@ int CommandLine_run(int argc, char** argv) {
       setCommFilter(&state, &(flags.commFilter));
 
    /* Set up shared search/filter history, stored below the XDG state directory */
-   char* historyPath = Settings_getHistoryFile();
+   char* historyPath = Settings_getHistoryFile(settings->filename);
    IncSet_setHistoryFile(panel->inc, historyPath);
    free(historyPath);
 
