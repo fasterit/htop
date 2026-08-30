@@ -910,6 +910,110 @@ int Settings_write(const Settings* this, bool onCrash) {
    return r;
 }
 
+static const char* Settings_getHome(void) {
+   const char* home = getenv("HOME");
+   if (!home || home[0] != '/') {
+      const struct passwd* pw = getpwuid(getuid());
+      return (pw && pw->pw_dir && pw->pw_dir[0] == '/') ? pw->pw_dir : "";
+   }
+   return home;
+}
+
+static bool Settings_mkdirp(const char* path, mode_t mode) {
+   char* copy = xStrdup(path);
+   bool ok = true;
+   for (char* p = copy + (copy[0] == '/' ? 1 : 0); *p; p++) {
+      if (*p != '/')
+         continue;
+      *p = '\0';
+      if (mkdir(copy, mode) != 0 && errno != EEXIST)
+         ok = false;
+      *p = '/';
+   }
+   if (mkdir(copy, mode) != 0 && errno != EEXIST)
+      ok = false;
+   free(copy);
+   return ok;
+}
+
+static void Settings_migrateHistory(const char* fromPath, const char* toPath) {
+   if (access(toPath, F_OK) == 0)
+      return;
+
+   struct stat sb;
+   if (lstat(fromPath, &sb) != 0 || !S_ISREG(sb.st_mode) || sb.st_uid != geteuid())
+      return;
+
+   int fromFd = open(fromPath, O_RDONLY | O_NOFOLLOW);
+   if (fromFd < 0)
+      return;
+   int toFd = open(toPath, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
+   if (toFd < 0) {
+      close(fromFd);
+      return;
+   }
+
+   bool ok = true;
+   char buf[4096];
+   for (;;) {
+      ssize_t n = read(fromFd, buf, sizeof(buf));
+      if (n < 0) {
+         if (errno == EINTR)
+            continue;
+         ok = false;
+         break;
+      }
+      if (n == 0)
+         break;
+      if (full_write(toFd, buf, (size_t)n) != n) {
+         ok = false;
+         break;
+      }
+   }
+   if (close(fromFd) != 0)
+      ok = false;
+   if (close(toFd) != 0 || !ok) {
+      unlink(toPath);
+   } else {
+      (void) unlink(fromPath);
+   }
+}
+
+char* Settings_getHistoryFile(void) {
+   const char* xdgStateHome = getenv("XDG_STATE_HOME");
+   const char* xdgConfigHome = getenv("XDG_CONFIG_HOME");
+   const char* home = Settings_getHome();
+
+   if ((!xdgStateHome || xdgStateHome[0] != '/') && !home[0])
+      return NULL;
+
+   char* stateHtopDir;
+   if (xdgStateHome && xdgStateHome[0] == '/')
+      stateHtopDir = String_cat(xdgStateHome, "/htop");
+   else
+      stateHtopDir = String_cat(home, "/.local/state/htop");
+
+   char* historyFile = String_cat(stateHtopDir, "/htop_history");
+   if (!Settings_mkdirp(stateHtopDir, 0700)) {
+      free(stateHtopDir);
+      free(historyFile);
+      return NULL;
+   }
+   free(stateHtopDir);
+
+   char* legacyDir;
+   if (xdgConfigHome && xdgConfigHome[0] == '/')
+      legacyDir = String_cat(xdgConfigHome, "/htop");
+   else
+      legacyDir = String_cat(home, CONFIGDIR "/htop");
+   char* legacyFile = String_cat(legacyDir, "/htop_history");
+   free(legacyDir);
+   Settings_migrateHistory(legacyFile, historyFile);
+   free(legacyFile);
+
+   return historyFile;
+}
+
 Settings* Settings_new(const Machine* host, Hashtable* dynamicMeters, Hashtable* dynamicColumns, Hashtable* dynamicScreens) {
    Settings* this = xCalloc(1, sizeof(Settings));
 
@@ -963,11 +1067,7 @@ Settings* Settings_new(const Machine* host, Hashtable* dynamicMeters, Hashtable*
    if (rcfile) {
       this->initialFilename = xStrdup(rcfile);
    } else {
-      const char* home = getenv("HOME");
-      if (!home || home[0] != '/') {
-         const struct passwd* pw = getpwuid(getuid());
-         home = (pw && pw->pw_dir && pw->pw_dir[0] == '/') ? pw->pw_dir : "";
-      }
+      const char* home = Settings_getHome();
       const char* xdgConfigHome = getenv("XDG_CONFIG_HOME");
       char* configDir = NULL;
       char* htopDir = NULL;

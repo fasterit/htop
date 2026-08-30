@@ -151,4 +151,10 @@ bool Settings_isReadonly(void);
 
 void Settings_setHeaderLayout(Settings* this, HeaderLayout hLayout);
 
+/* Return the path of the search/filter history file, located below the XDG
+   state directory. Ensures the directory exists and migrates a legacy history
+   file from the configuration directory. Returns NULL if no suitable home
+   directory can be determined. */
+char* Settings_getHistoryFile(void);
+
 #endif

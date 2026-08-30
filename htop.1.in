@@ -739,6 +739,16 @@ tries to read the system-wide configuration from
 .I @sysconfdir@/htoprc
 and as a last resort, falls back to its hard coded defaults.
 .LP
+The search and filter history is stored below the XDG state directory, in
+.IR $XDG_STATE_HOME/htop/htop_history ,
+defaulting to
+.IR ~/.local/state/htop/htop_history
+when the
+.IR $XDG_STATE_HOME
+variable is not set.
+A history file left over from an older version next to the configuration
+file is migrated to this location automatically on the next start.
+.LP
 You may override the location of the configuration file using the $HTOPRC
 environment variable (so you can have multiple configurations for different
 machines that share the same home directory, for example).
