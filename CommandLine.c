@@ -64,6 +64,7 @@ static void printHelpFlag(const char* name) {
    printf("-M --no-mouse                   Disable the mouse\n");
 #endif
    printf("   --no-meters                  Hide meters\n"
+          "   --keep-visible[=N]           Keep the first N columns visible when scrolling sideways (0-5, default 1)\n"
           "-n --max-iterations=NUMBER      Exit htop after NUMBER iterations/frame updates\n"
           "-p --pid=PID[,PID,PID...]       Show only the given PIDs\n"
           "   --readonly                   Disable all system and process changing features\n"
@@ -99,6 +100,7 @@ typedef struct CommandLineSettings_ {
    bool readonly;
    bool hideMeters;
    bool hideFunctionBar;
+   int keepColumnsVisible;
 } CommandLineSettings;
 
 static bool parseTreeStableMode(const char* arg, int* stableTreeView) {
@@ -141,6 +143,7 @@ static CommandLineStatus parseArguments(int argc, char** argv, CommandLineSettin
       .readonly = false,
       .hideMeters = false,
       .hideFunctionBar = false,
+      .keepColumnsVisible = -1,
    };
 
    {
@@ -171,6 +174,7 @@ static CommandLineStatus parseArguments(int argc, char** argv, CommandLineSettin
       {"no-function-bar", no_argument,    0, 130},
       {"highlight-changes", optional_argument, 0, 'H'},
       {"readonly",   no_argument,         0, 128},
+      {"keep-visible", optional_argument,  0, 131},
       PLATFORM_LONG_OPTIONS
       {0, 0, 0, 0}
    };
@@ -349,6 +353,22 @@ static CommandLineStatus parseArguments(int argc, char** argv, CommandLineSettin
          case 128:
             flags->readonly = true;
             break;
+         case 131: {
+            // parse the optional argument, defaulting to 1 when not given
+            if (optarg) {
+               if (sscanf(optarg, "%16d", &(flags->keepColumnsVisible)) != 1) {
+                  fprintf(stderr, "Error: invalid value \"%s\" for --keep-visible.\n", optarg);
+                  return STATUS_ERROR_EXIT;
+               }
+            } else {
+               flags->keepColumnsVisible = 1;
+            }
+            if (flags->keepColumnsVisible < 0 || flags->keepColumnsVisible > MAXIMUM_KEEP_COLUMNS) {
+               fprintf(stderr, "Error: --keep-visible must be between 0 and %d.\n", MAXIMUM_KEEP_COLUMNS);
+               return STATUS_ERROR_EXIT;
+            }
+            break;
+         }
 
          default: {
             CommandLineStatus status;
@@ -443,6 +463,8 @@ int CommandLine_run(int argc, char** argv) {
    }
    if (flags.hideFunctionBar)
       settings->hideFunctionBar = 2;
+   if (flags.keepColumnsVisible != -1)
+      settings->keepColumnsVisible = flags.keepColumnsVisible;
 
    host->iterationsRemaining = flags.iterationsRemaining;
    CRT_init(settings, flags.allowUnicode, flags.iterationsRemaining != -1);

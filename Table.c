@@ -375,10 +375,13 @@ void Table_printHeader(const Settings* settings, RichString* header) {
 
    for (int i = 0; fields[i]; i++) {
       int color;
+      bool pinned = (i < settings->keepColumnsVisible);
       if (ss->treeView && ss->treeViewAlwaysByPID) {
          color = CRT_colors[PANEL_HEADER_FOCUS];
       } else if (key == fields[i]) {
          color = CRT_colors[PANEL_SELECTION_FOCUS];
+      } else if (pinned) {
+         color = CRT_colors[PANEL_SELECTION_FOLLOW];
       } else {
          color = CRT_colors[PANEL_HEADER_FOCUS];
       }

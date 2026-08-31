@@ -190,6 +190,14 @@ RowField RowField_keyAt(const Settings* settings, int at) {
    return COMM;
 }
 
+int RowField_pinnedWidth(const Settings* settings, int count) {
+   const RowField* fields = settings->ss->fields;
+   int width = 0;
+   for (int i = 0; i < count && fields[i]; i++)
+      width += (int)strlen(RowField_alignedTitle(settings, fields[i]));
+   return width;
+}
+
 void Row_printKBytes(RichString* str, unsigned long long number, bool coloring) {
    char buffer[16];
    int len;

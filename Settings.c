@@ -574,6 +574,8 @@ static bool Settings_read(Settings* this, const char* fileName, const Machine* h
          }
       } else if (String_eq(option[0], "hide_function_bar")) {
          this->hideFunctionBar = atoi(option[1]);
+      } else if (String_eq(option[0], "keep_columns_visible")) {
+         this->keepColumnsVisible = CLAMP(atoi(option[1]), 0, MAXIMUM_KEEP_COLUMNS);
       #ifdef HAVE_LIBHWLOC
       } else if (String_eq(option[0], "topology_affinity")) {
          this->topologyAffinity = !!atoi(option[1]);
@@ -841,6 +843,7 @@ int Settings_write(const Settings* this, bool onCrash) {
    #endif
    printSettingInteger("delay", (int) this->delay);
    printSettingInteger("hide_function_bar", (int) this->hideFunctionBar);
+   printSettingInteger("keep_columns_visible", this->keepColumnsVisible);
    #ifdef HAVE_LIBHWLOC
    printSettingInteger("topology_affinity", this->topologyAffinity);
    #endif
@@ -951,6 +954,7 @@ Settings* Settings_new(const Machine* host, Hashtable* dynamicMeters, Hashtable*
    this->showMergedCommand = false;
    this->hideFunctionBar = 0;
    this->headerMargin = true;
+   this->keepColumnsVisible = 0;
    #ifdef HAVE_LIBHWLOC
    this->topologyAffinity = false;
    #endif
