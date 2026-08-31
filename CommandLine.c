@@ -64,7 +64,7 @@ static void printHelpFlag(const char* name) {
    printf("-M --no-mouse                   Disable the mouse\n");
 #endif
    printf("   --no-meters                  Hide meters\n"
-          "   --keep-visible[=N]           Keep the first N columns visible when scrolling sideways (0-5, default 1)\n"
+          "   --keep-visible[=N]           Keep the first N columns visible when scrolling sideways (default 1)\n"
           "-n --max-iterations=NUMBER      Exit htop after NUMBER iterations/frame updates\n"
           "-p --pid=PID[,PID,PID...]       Show only the given PIDs\n"
           "   --readonly                   Disable all system and process changing features\n"
@@ -363,8 +363,8 @@ static CommandLineStatus parseArguments(int argc, char** argv, CommandLineSettin
             } else {
                flags->keepColumnsVisible = 1;
             }
-            if (flags->keepColumnsVisible < 0 || flags->keepColumnsVisible > MAXIMUM_KEEP_COLUMNS) {
-               fprintf(stderr, "Error: --keep-visible must be between 0 and %d.\n", MAXIMUM_KEEP_COLUMNS);
+            if (flags->keepColumnsVisible < 0) {
+               fprintf(stderr, "Error: --keep-visible must not be negative.\n");
                return STATUS_ERROR_EXIT;
             }
             break;

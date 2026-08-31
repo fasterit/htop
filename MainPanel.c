@@ -224,7 +224,7 @@ static void MainPanel_printHeader(Panel* super) {
    MainPanel* this = (MainPanel*) super;
    Machine* host = this->state->host;
    Settings* settings = host->settings;
-   super->pinnedWidth = RowField_pinnedWidth(settings, settings->keepColumnsVisible);
+   super->pinnedWidth = RowField_pinnedWidth(settings);
    Table_printHeader(settings, &super->header);
 }
 

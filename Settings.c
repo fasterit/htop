@@ -575,7 +575,7 @@ static bool Settings_read(Settings* this, const char* fileName, const Machine* h
       } else if (String_eq(option[0], "hide_function_bar")) {
          this->hideFunctionBar = atoi(option[1]);
       } else if (String_eq(option[0], "keep_columns_visible")) {
-         this->keepColumnsVisible = CLAMP(atoi(option[1]), 0, MAXIMUM_KEEP_COLUMNS);
+         this->keepColumnsVisible = MAXIMUM(atoi(option[1]), 0);
       #ifdef HAVE_LIBHWLOC
       } else if (String_eq(option[0], "topology_affinity")) {
          this->topologyAffinity = !!atoi(option[1]);

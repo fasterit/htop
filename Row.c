@@ -190,10 +190,23 @@ RowField RowField_keyAt(const Settings* settings, int at) {
    return COMM;
 }
 
-int RowField_pinnedWidth(const Settings* settings, int count) {
+// Number of leading columns that are actually pinned: the last column is
+// always kept scrollable, so this falls back to (nColumns - 1) when more
+// columns are requested to keep visible than the current screen provides.
+int RowField_pinnedCount(const Settings* settings) {
+   const RowField* fields = settings->ss->fields;
+   int nColumns = 0;
+   while (fields[nColumns])
+      nColumns++;
+   if (!nColumns)
+      return 0;
+   return CLAMP(settings->keepColumnsVisible, 0, nColumns - 1);
+}
+
+int RowField_pinnedWidth(const Settings* settings) {
    const RowField* fields = settings->ss->fields;
    int width = 0;
-   for (int i = 0; i < count && fields[i]; i++) {
+   for (int i = 0; i < RowField_pinnedCount(settings); i++) {
       width += (int)strlen(RowField_alignedTitle(settings, fields[i]));
       if (fields[i] == COMM && settings->showMergedCommand)
          width += (int)strlen("(merged)");

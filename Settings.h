@@ -20,8 +20,6 @@ in the source distribution for its full text.
 
 #define DEFAULT_DELAY 15
 
-#define MAXIMUM_KEEP_COLUMNS 5
-
 #define CONFIG_READER_MIN_VERSION 3
 
 struct DynamicScreen_;  // IWYU pragma: keep
@@ -106,7 +104,7 @@ typedef struct Settings_ {
    bool accountGuestInCPUMeter;
    bool headerMargin;
    bool screenTabs;
-   int keepColumnsVisible;  // 0 - off, 1-5 - number of leading columns kept in view when scrolling horizontally
+   int keepColumnsVisible;  // number of leading columns kept in view when scrolling horizontally (0 - off). Higher values than the number of columns fall back to pinning all but the last.
    bool showCachedMemory;
    #ifdef HAVE_GETMOUSE
    bool enableMouse;

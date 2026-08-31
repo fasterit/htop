@@ -79,10 +79,12 @@ Disable support of mouse control
 \fB\-\-no-meters\fR
 Hide graph meters
 .TP
-\fB\-\-keep-visible[=N]\fR
+ \fB\-\-keep-visible[=N]\fR
 Keep the first N columns visible when scrolling sideways in the process list.
-The argument is optional; if omitted, N is taken to be 1.
-Valid values are 0 (disabled, the default) up to 5.
+The argument is optional; if omitted, N is taken to be 1, and 0 disables the
+feature (the default). If N is larger than the number of columns of the
+current screen, all columns except the last one are kept visible, so that
+the last column remains scrollable.
 .TP
 \fB\-\-readonly\fR
 Disable all system and process changing features
