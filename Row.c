@@ -193,8 +193,11 @@ RowField RowField_keyAt(const Settings* settings, int at) {
 int RowField_pinnedWidth(const Settings* settings, int count) {
    const RowField* fields = settings->ss->fields;
    int width = 0;
-   for (int i = 0; i < count && fields[i]; i++)
+   for (int i = 0; i < count && fields[i]; i++) {
       width += (int)strlen(RowField_alignedTitle(settings, fields[i]));
+      if (fields[i] == COMM && settings->showMergedCommand)
+         width += (int)strlen("(merged)");
+   }
    return width;
 }
 
