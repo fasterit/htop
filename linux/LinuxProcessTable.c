@@ -514,12 +514,11 @@ static bool LinuxProcessTable_readStatFile(LinuxProcess* lp, openat_arg_t procFd
    /* (22) starttime  -  %llu */
    if (process->starttime_ctime == 0) {
       process->starttime_ctime = lhost->boottime + LinuxProcessTable_adjustTime(lhost, fast_strtoll_dec(&location, 0)) / 100;
+   } else {
+      location = strchr(location, ' ');
+      if (!location)
+         return false;
    }
-
-   location = strchr(location, ' ');
-   if (!location)
-      return false;
-
    location += 1;
 
    /* Skip (23) - (38) */
