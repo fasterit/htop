@@ -468,7 +468,7 @@ int CommandLine_run(int argc, char** argv) {
    }
    if (flags.hideFunctionBar)
       settings->hideFunctionBar = 2;
-   if (flags.keepColumnsVisible < 0)
+   if (flags.keepColumnsVisible >= 0)
       settings->keepColumnsVisible = flags.keepColumnsVisible;
 
    host->iterationsRemaining = flags.iterationsRemaining;
