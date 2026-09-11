@@ -372,10 +372,14 @@ void Table_printHeader(const Settings* settings, RichString* header) {
    const RowField* fields = ss->fields;
 
    RowField key = ScreenSettings_getActiveSortKey(ss);
+   int pinnedCount = RowField_pinnedCount(settings);
 
    for (int i = 0; fields[i]; i++) {
       int color;
-      if (ss->treeView && ss->treeViewAlwaysByPID) {
+      bool isPinned = (i < pinnedCount);
+      if (isPinned) {
+         color = CRT_colors[PANEL_HEADER_PINNED];
+      } else if (ss->treeView && ss->treeViewAlwaysByPID) {
          color = CRT_colors[PANEL_HEADER_FOCUS];
       } else if (key == fields[i]) {
          color = CRT_colors[PANEL_SELECTION_FOCUS];
